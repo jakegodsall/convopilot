@@ -43,30 +43,30 @@ api.interceptors.response.use(
 // Auth API endpoints
 export const authAPI = {
   register: (userData: RegisterData) => 
-    api.post('/auth/register', userData),
+    api.post('/api/auth/register', userData),
   
   login: (credentials: LoginData) => 
-    api.post('/auth/login', {
+    api.post('/api/auth/login', {
       email: credentials.email,
       password: credentials.password,
     }),
   
   checkEmailAvailability: (email: string) => 
-    api.post('/auth/check-email', null, { params: { email } }),
+    api.post('/api/auth/check-email', null, { params: { email } }),
   
   checkUsernameAvailability: (username: string) => 
-    api.post('/auth/check-username', null, { params: { username } }),
+    api.post('/api/auth/check-username', null, { params: { username } }),
 };
 
 // User API endpoints
 export const userAPI = {
-  getCurrentUser: () => api.get('/users/me'),
-  updateProfile: (userData: UserUpdateData) => api.put('/users/me', userData),
-  getUserStats: () => api.get('/users/me/stats'),
-  getProfileCompletion: () => api.get('/users/profile-completion'),
-  getLanguagePeers: () => api.get('/users/language-peers'),
-  getStatistics: () => api.get('/users/statistics'),
-  deactivateAccount: () => api.delete('/users/me'),
+  getCurrentUser: () => api.get('/api/users/me'),
+  updateProfile: (userData: UserUpdateData) => api.put('/api/users/me', userData),
+  getUserStats: () => api.get('/api/users/me/stats'),
+  getProfileCompletion: () => api.get('/api/users/profile-completion'),
+  getLanguagePeers: () => api.get('/api/users/language-peers'),
+  getStatistics: () => api.get('/api/users/statistics'),
+  deactivateAccount: () => api.delete('/api/users/me'),
 };
 
 // Sessions API endpoints (placeholder for future implementation)
@@ -93,8 +93,6 @@ export interface RegisterData {
   email: string;
   username: string;
   password: string;
-  first_name: string;
-  last_name: string;
   native_language: string;
   target_language: string;
   proficiency_level: string;
@@ -116,8 +114,8 @@ export interface User {
   id: number;
   email: string;
   username: string;
-  first_name: string;
-  last_name: string;
+  first_name?: string;
+  last_name?: string;
   native_language: string;
   target_language: string;
   proficiency_level: string;

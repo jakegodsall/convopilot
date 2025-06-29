@@ -16,8 +16,8 @@ class ProficiencyLevel(str, Enum):
 class UserBase(SQLModel):
     email: str = Field(unique=True, index=True, max_length=255)
     username: str = Field(unique=True, index=True, min_length=3, max_length=50)
-    first_name: str = Field(min_length=1, max_length=100)
-    last_name: str = Field(min_length=1, max_length=100)
+    first_name: Optional[str] = Field(default=None, max_length=100)
+    last_name: Optional[str] = Field(default=None, max_length=100)
     native_language: str = Field(min_length=2, max_length=10)  # ISO 639-1 code
     target_language: str = Field(min_length=2, max_length=10)  # ISO 639-1 code
     proficiency_level: ProficiencyLevel
