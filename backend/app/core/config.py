@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings
-from pydantic import field_validator
-from typing import Optional, Union
+from pydantic import model_validator
+from typing import Optional, Union, Any
 import os
 
 class Settings(BaseSettings):
@@ -22,17 +22,18 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     
-    # CORS settings
-    backend_cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8000"]
+    # CORS settings - Use string for env var, convert to list
+    backend_cors_origins: Union[str, list[str]] = "http://dev.jakegodsall.com:3000,http://dev.jakegodsall.com:8000"
     
-    @field_validator('backend_cors_origins', mode='before')
+    @model_validator(mode='before')
     @classmethod
-    def assemble_cors_origins(cls, v: Union[str, list[str]]) -> Union[str, list[str]]:
-        if isinstance(v, str) and not v.startswith('['):
-            return [i.strip() for i in v.split(',')]
-        elif isinstance(v, (list, str)):
-            return v
-        raise ValueError(v)
+    def validate_cors_origins(cls, data: Any) -> Any:
+        if isinstance(data, dict) and 'backend_cors_origins' in data:
+            cors_origins = data['backend_cors_origins']
+            if isinstance(cors_origins, str):
+                # Split comma-separated string into list
+                data['backend_cors_origins'] = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
+        return data
     
     # LLM API settings (for future use)
     openai_api_key: Optional[str] = None
