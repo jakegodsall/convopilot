@@ -1,5 +1,4 @@
 from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, List
 from datetime import datetime
 from enum import Enum
 import json
@@ -60,7 +59,7 @@ class User(UserBase, table=True):
 # API Models
 class UserCreate(UserBase):
     password: str = Field(min_length=8)
-    preferred_topics: Optional[List[str]] = None
+    preferred_topics: list[str] | None = None
 
 class UserUpdate(SQLModel):
     first_name: str | None = Field(default=None, min_length=1, max_length=100)

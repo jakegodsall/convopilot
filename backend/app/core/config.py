@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     
     # CORS settings - Use string for env var, convert to list
-    backend_cors_origins: str | list[str] = "http://dev.jakegodsall.com:3000"
+    backend_cors_origins: str | list[str] = "http://localhost:3000"
     
     # LLM API settings (for future use)
     openai_api_key: str | None = None

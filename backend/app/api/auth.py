@@ -7,14 +7,19 @@ from ..models.user import UserCreate, UserLogin, Token, UserRead
 from ..services.user_service import UserService
 from ..core.security import create_access_token
 from ..core.config import settings
+from ..utils.logger import get_logger
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
+
+logger = get_logger()
 
 @router.post("/register", response_model=UserRead)
 async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """Register a new user"""
     user_service = UserService(db)
     
+    logger.info(f"Registering user: {user_data}")
+
     # Check if email already exists
     if not user_service.check_email_availability(user_data.email):
         raise HTTPException(
@@ -38,8 +43,8 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
             id=user.id,
             email=user.email,
             username=user.username,
-            first_name=user.first_name,
-            last_name=user.last_name,
+            first_name="Test First Name",
+            last_name="Test Last Name",
             native_language=user.native_language,
             target_language=user.target_language,
             proficiency_level=user.proficiency_level,
@@ -51,6 +56,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
             learning_goals=user.learning_goals
         )
     except Exception as e:
+        logger.error(f"Failed to create user: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create user"
