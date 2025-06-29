@@ -11,7 +11,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { proficiencyLevels, commonTopics, languageNames } from '@/lib/utils';
-import { ArrowRight, ArrowLeft, CheckCircle, User, Lock, Globe, Target, Sparkles } from 'lucide-react';
+import { ArrowRight, ArrowLeft, CheckCircle, Lock, Globe, Target, Sparkles } from 'lucide-react';
 
 // Step schemas for validation
 const step1Schema = z.object({
@@ -25,30 +25,23 @@ const step1Schema = z.object({
 });
 
 const step2Schema = z.object({
-  first_name: z.string().min(1, 'First name is required'),
-  last_name: z.string().min(1, 'Last name is required'),
-});
-
-const step3Schema = z.object({
   native_language: z.string().min(1, 'Please select your native language'),
   target_language: z.string().min(1, 'Please select your target language'),
   proficiency_level: z.string().min(1, 'Please select your proficiency level'),
 });
 
-const step4Schema = z.object({
+const step3Schema = z.object({
   learning_goals: z.string().optional(),
 });
 
 type Step1Data = z.infer<typeof step1Schema>;
 type Step2Data = z.infer<typeof step2Schema>;
 type Step3Data = z.infer<typeof step3Schema>;
-type Step4Data = z.infer<typeof step4Schema>;
 
 interface OnboardingData {
   step1: Partial<Step1Data>;
   step2: Partial<Step2Data>;
   step3: Partial<Step3Data>;
-  step4: Partial<Step4Data>;
   selectedTopics: string[];
 }
 
@@ -61,24 +54,18 @@ const steps = [
   },
   { 
     number: 2, 
-    title: 'Personal Info', 
-    description: 'Tell us about yourself',
-    icon: User 
-  },
-  { 
-    number: 3, 
     title: 'Language Setup', 
     description: 'Choose your languages',
     icon: Globe 
   },
   { 
-    number: 4, 
+    number: 3, 
     title: 'Learning Goals', 
     description: 'Customize your experience',
     icon: Target 
   },
   { 
-    number: 5, 
+    number: 4, 
     title: 'Welcome!', 
     description: 'You\'re all set',
     icon: Sparkles 
@@ -94,7 +81,6 @@ export default function RegisterPage() {
     step1: {},
     step2: {},
     step3: {},
-    step4: {},
     selectedTopics: [],
   });
 
@@ -104,7 +90,6 @@ export default function RegisterPage() {
       case 1: return step1Schema;
       case 2: return step2Schema;
       case 3: return step3Schema;
-      case 4: return step4Schema;
       default: return z.object({});
     }
   };
@@ -151,7 +136,7 @@ export default function RegisterPage() {
 
     saveStepData(data);
 
-    if (currentStep < 5) {
+    if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -178,12 +163,11 @@ export default function RegisterPage() {
         ...onboardingData.step1,
         ...onboardingData.step2,
         ...onboardingData.step3,
-        ...onboardingData.step4,
         preferred_topics: onboardingData.selectedTopics.length > 0 ? onboardingData.selectedTopics : undefined,
       };
 
       await registerUser(registerData as any);
-      setCurrentStep(5);
+      setCurrentStep(4);
     } catch (error) {
       // Error is handled by the auth context
     } finally {
@@ -213,10 +197,10 @@ export default function RegisterPage() {
             <h1 className="text-3xl font-bold text-blue-600">ConvoPilot</h1>
           </Link>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            {currentStep === 5 ? 'Welcome to ConvoPilot!' : 'Join ConvoPilot'}
+            {currentStep === 4 ? 'Welcome to ConvoPilot!' : 'Join ConvoPilot'}
           </h2>
           <p className="text-gray-600">
-            {currentStep === 5 
+            {currentStep === 4 
               ? 'Your account has been created successfully!'
               : 'Start your language learning journey today'
             }
@@ -282,7 +266,7 @@ export default function RegisterPage() {
                   {...register('email')}
                   type="email"
                   label="Email Address"
-                  error={errors.email?.message}
+                  error={errors.email?.message as string}
                   required
                   autoComplete="email"
                 />
@@ -290,7 +274,7 @@ export default function RegisterPage() {
                 <Input
                   {...register('username')}
                   label="Username"
-                  error={errors.username?.message}
+                  error={errors.username?.message as string}
                   required
                   autoComplete="username"
                   helperText="This will be your unique identifier"
@@ -300,7 +284,7 @@ export default function RegisterPage() {
                   {...register('password')}
                   type="password"
                   label="Password"
-                  error={errors.password?.message}
+                  error={errors.password?.message as string}
                   required
                   autoComplete="new-password"
                 />
@@ -309,7 +293,7 @@ export default function RegisterPage() {
                   {...register('confirmPassword')}
                   type="password"
                   label="Confirm Password"
-                  error={errors.confirmPassword?.message}
+                  error={errors.confirmPassword?.message as string}
                   required
                   autoComplete="new-password"
                 />
@@ -331,48 +315,6 @@ export default function RegisterPage() {
             {currentStep === 2 && (
               <form onSubmit={handleSubmit(handleNext)} className="space-y-6">
                 <div className="text-center mb-6">
-                  <User className="w-12 h-12 text-blue-600 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-gray-900">Personal Information</h3>
-                  <p className="text-gray-600">Tell us a bit about yourself</p>
-                </div>
-
-                <Input
-                  {...register('first_name')}
-                  label="First Name"
-                  error={errors.first_name?.message}
-                  required
-                  autoComplete="given-name"
-                />
-
-                <Input
-                  {...register('last_name')}
-                  label="Last Name"
-                  error={errors.last_name?.message}
-                  required
-                  autoComplete="family-name"
-                />
-
-                <div className="flex space-x-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleBack}
-                    className="flex items-center"
-                  >
-                    <ArrowLeft className="w-4 h-4 mr-2" />
-                    Back
-                  </Button>
-                  <Button type="submit" className="flex-1 flex items-center justify-center">
-                    Continue
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Button>
-                </div>
-              </form>
-            )}
-
-            {currentStep === 3 && (
-              <form onSubmit={handleSubmit(handleNext)} className="space-y-6">
-                <div className="text-center mb-6">
                   <Globe className="w-12 h-12 text-blue-600 mx-auto mb-4" />
                   <h3 className="text-xl font-semibold text-gray-900">Language Setup</h3>
                   <p className="text-gray-600">Choose your languages and current level</p>
@@ -381,7 +323,7 @@ export default function RegisterPage() {
                 <Select
                   {...register('native_language')}
                   label="Native Language"
-                  error={errors.native_language?.message}
+                  error={errors.native_language?.message as string}
                   required
                   options={[
                     { value: '', label: 'Select your native language' },
@@ -392,7 +334,7 @@ export default function RegisterPage() {
                 <Select
                   {...register('target_language')}
                   label="Target Language"
-                  error={errors.target_language?.message}
+                  error={errors.target_language?.message as string}
                   required
                   options={[
                     { value: '', label: 'Select language to learn' },
@@ -403,7 +345,7 @@ export default function RegisterPage() {
                 <Select
                   {...register('proficiency_level')}
                   label="Current Proficiency Level"
-                  error={errors.proficiency_level?.message}
+                  error={errors.proficiency_level?.message as string}
                   required
                   options={[
                     { value: '', label: 'Select your current level' },
@@ -430,7 +372,7 @@ export default function RegisterPage() {
               </form>
             )}
 
-            {currentStep === 4 && (
+            {currentStep === 3 && (
               <div className="space-y-6">
                 <div className="text-center mb-6">
                   <Target className="w-12 h-12 text-blue-600 mx-auto mb-4" />
@@ -443,7 +385,7 @@ export default function RegisterPage() {
                     {...register('learning_goals')}
                     label="Learning Goals (Optional)"
                     placeholder="e.g., Travel to Spain, Business communication..."
-                    error={errors.learning_goals?.message}
+                    error={errors.learning_goals?.message as string}
                     helperText="What do you want to achieve?"
                   />
                 </form>
@@ -500,7 +442,7 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {currentStep === 5 && (
+            {currentStep === 4 && (
               <div className="text-center space-y-6">
                 <Sparkles className="w-16 h-16 text-green-600 mx-auto" />
                 <div>
@@ -534,11 +476,11 @@ export default function RegisterPage() {
           </div>
         </div>
 
-        {/* Skip option for steps 2-4 */}
-        {currentStep > 1 && currentStep < 5 && (
+        {/* Skip option for steps 2-3 */}
+        {currentStep > 1 && currentStep < 4 && (
           <div className="text-center mt-4">
             <button
-              onClick={() => setCurrentStep(4)}
+              onClick={() => setCurrentStep(3)}
               className="text-sm text-gray-500 hover:text-gray-700"
             >
               Skip and complete later
