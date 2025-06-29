@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
+from pydantic import field_validator
+from typing import Optional, Union
 import os
 
 class Settings(BaseSettings):
@@ -23,6 +24,15 @@ class Settings(BaseSettings):
     
     # CORS settings
     backend_cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8000"]
+    
+    @field_validator('backend_cors_origins', mode='before')
+    @classmethod
+    def assemble_cors_origins(cls, v: Union[str, list[str]]) -> Union[str, list[str]]:
+        if isinstance(v, str) and not v.startswith('['):
+            return [i.strip() for i in v.split(',')]
+        elif isinstance(v, (list, str)):
+            return v
+        raise ValueError(v)
     
     # LLM API settings (for future use)
     openai_api_key: Optional[str] = None
