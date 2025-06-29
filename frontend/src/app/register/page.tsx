@@ -11,42 +11,117 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { proficiencyLevels, commonTopics, languageNames } from '@/lib/utils';
+import { ArrowRight, ArrowLeft, CheckCircle, User, Lock, Globe, Target, Sparkles } from 'lucide-react';
 
-const registerSchema = z.object({
+// Step schemas for validation
+const step1Schema = z.object({
   email: z.string().email('Please enter a valid email address'),
   username: z.string().min(3, 'Username must be at least 3 characters').max(50, 'Username must be less than 50 characters'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
-  first_name: z.string().min(1, 'First name is required'),
-  last_name: z.string().min(1, 'Last name is required'),
-  native_language: z.string().min(1, 'Please select your native language'),
-  target_language: z.string().min(1, 'Please select your target language'),
-  proficiency_level: z.string().min(1, 'Please select your proficiency level'),
-  learning_goals: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
 });
 
-type RegisterFormData = z.infer<typeof registerSchema>;
+const step2Schema = z.object({
+  first_name: z.string().min(1, 'First name is required'),
+  last_name: z.string().min(1, 'Last name is required'),
+});
+
+const step3Schema = z.object({
+  native_language: z.string().min(1, 'Please select your native language'),
+  target_language: z.string().min(1, 'Please select your target language'),
+  proficiency_level: z.string().min(1, 'Please select your proficiency level'),
+});
+
+const step4Schema = z.object({
+  learning_goals: z.string().optional(),
+});
+
+type Step1Data = z.infer<typeof step1Schema>;
+type Step2Data = z.infer<typeof step2Schema>;
+type Step3Data = z.infer<typeof step3Schema>;
+type Step4Data = z.infer<typeof step4Schema>;
+
+interface OnboardingData {
+  step1: Partial<Step1Data>;
+  step2: Partial<Step2Data>;
+  step3: Partial<Step3Data>;
+  step4: Partial<Step4Data>;
+  selectedTopics: string[];
+}
+
+const steps = [
+  { 
+    number: 1, 
+    title: 'Create Account', 
+    description: 'Set up your login credentials',
+    icon: Lock 
+  },
+  { 
+    number: 2, 
+    title: 'Personal Info', 
+    description: 'Tell us about yourself',
+    icon: User 
+  },
+  { 
+    number: 3, 
+    title: 'Language Setup', 
+    description: 'Choose your languages',
+    icon: Globe 
+  },
+  { 
+    number: 4, 
+    title: 'Learning Goals', 
+    description: 'Customize your experience',
+    icon: Target 
+  },
+  { 
+    number: 5, 
+    title: 'Welcome!', 
+    description: 'You\'re all set',
+    icon: Sparkles 
+  },
+];
 
 export default function RegisterPage() {
   const router = useRouter();
   const { register: registerUser, user, loading: authLoading } = useAuth();
+  const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
+  const [onboardingData, setOnboardingData] = useState<OnboardingData>({
+    step1: {},
+    step2: {},
+    step3: {},
+    step4: {},
+    selectedTopics: [],
+  });
+
+  // Form for current step
+  const getFormSchema = () => {
+    switch (currentStep) {
+      case 1: return step1Schema;
+      case 2: return step2Schema;
+      case 3: return step3Schema;
+      case 4: return step4Schema;
+      default: return z.object({});
+    }
+  };
 
   const {
     register,
     handleSubmit,
     formState: { errors },
+    reset,
     watch,
-  } = useForm<RegisterFormData>({
-    resolver: zodResolver(registerSchema),
+    trigger,
+  } = useForm({
+    resolver: zodResolver(getFormSchema()),
+    defaultValues: onboardingData[`step${currentStep}` as keyof OnboardingData] as any,
   });
 
   const nativeLanguage = watch('native_language');
-  const targetLanguage = watch('target_language');
 
   // Redirect if already logged in
   useEffect(() => {
@@ -55,28 +130,65 @@ export default function RegisterPage() {
     }
   }, [user, authLoading, router]);
 
-  const onSubmit = async (data: RegisterFormData) => {
+  // Reset form when step changes
+  useEffect(() => {
+    const stepData = onboardingData[`step${currentStep}` as keyof OnboardingData];
+    if (stepData && typeof stepData === 'object') {
+      reset(stepData);
+    }
+  }, [currentStep, reset, onboardingData]);
+
+  const saveStepData = (data: any) => {
+    setOnboardingData(prev => ({
+      ...prev,
+      [`step${currentStep}`]: data,
+    }));
+  };
+
+  const handleNext = async (data: any) => {
+    const isValid = await trigger();
+    if (!isValid) return;
+
+    saveStepData(data);
+
+    if (currentStep < 5) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleTopicToggle = (topic: string) => {
+    setOnboardingData(prev => ({
+      ...prev,
+      selectedTopics: prev.selectedTopics.includes(topic)
+        ? prev.selectedTopics.filter(t => t !== topic)
+        : [...prev.selectedTopics, topic]
+    }));
+  };
+
+  const handleFinalSubmit = async () => {
     setIsLoading(true);
     try {
-      const { confirmPassword, ...registerData } = data;
-      await registerUser({
-        ...registerData,
-        preferred_topics: selectedTopics.length > 0 ? selectedTopics : undefined,
-      });
-      router.push('/dashboard');
+      const { confirmPassword, ...registerData } = {
+        ...onboardingData.step1,
+        ...onboardingData.step2,
+        ...onboardingData.step3,
+        ...onboardingData.step4,
+        preferred_topics: onboardingData.selectedTopics.length > 0 ? onboardingData.selectedTopics : undefined,
+      };
+
+      await registerUser(registerData as any);
+      setCurrentStep(5);
     } catch (error) {
       // Error is handled by the auth context
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const toggleTopic = (topic: string) => {
-    setSelectedTopics(prev => 
-      prev.includes(topic) 
-        ? prev.filter(t => t !== topic)
-        : [...prev, topic]
-    );
   };
 
   const languageOptions = Object.entries(languageNames).map(([code, name]) => ({
@@ -93,182 +205,346 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
         <div className="text-center mb-8">
-          <Link href="/" className="inline-block">
+          <Link href="/" className="inline-block mb-6">
             <h1 className="text-3xl font-bold text-blue-600">ConvoPilot</h1>
           </Link>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Create your account
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {currentStep === 5 ? 'Welcome to ConvoPilot!' : 'Join ConvoPilot'}
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Already have an account?{' '}
-            <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
-              Sign in
-            </Link>
+          <p className="text-gray-600">
+            {currentStep === 5 
+              ? 'Your account has been created successfully!'
+              : 'Start your language learning journey today'
+            }
           </p>
         </div>
 
-        <div className="bg-white shadow sm:rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-              {/* Personal Information */}
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Personal Information</h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Input
-                    {...register('first_name')}
-                    label="First Name"
-                    error={errors.first_name?.message}
-                    required
-                    autoComplete="given-name"
-                  />
-                  <Input
-                    {...register('last_name')}
-                    label="Last Name"
-                    error={errors.last_name?.message}
-                    required
-                    autoComplete="family-name"
-                  />
-                </div>
-              </div>
-
-              {/* Account Information */}
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Account Information</h3>
-                <div className="space-y-4">
-                  <Input
-                    {...register('email')}
-                    type="email"
-                    label="Email Address"
-                    error={errors.email?.message}
-                    required
-                    autoComplete="email"
-                  />
-                  <Input
-                    {...register('username')}
-                    label="Username"
-                    error={errors.username?.message}
-                    required
-                    autoComplete="username"
-                    helperText="This will be your unique identifier on ConvoPilot"
-                  />
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Input
-                      {...register('password')}
-                      type="password"
-                      label="Password"
-                      error={errors.password?.message}
-                      required
-                      autoComplete="new-password"
-                    />
-                    <Input
-                      {...register('confirmPassword')}
-                      type="password"
-                      label="Confirm Password"
-                      error={errors.confirmPassword?.message}
-                      required
-                      autoComplete="new-password"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Language Information */}
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Language Preferences</h3>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                  <Select
-                    {...register('native_language')}
-                    label="Native Language"
-                    error={errors.native_language?.message}
-                    required
-                    options={[
-                      { value: '', label: 'Select your native language' },
-                      ...languageOptions,
-                    ]}
-                  />
-                  <Select
-                    {...register('target_language')}
-                    label="Target Language"
-                    error={errors.target_language?.message}
-                    required
-                    options={[
-                      { value: '', label: 'Select language to learn' },
-                      ...languageOptions.filter(lang => lang.value !== nativeLanguage),
-                    ]}
-                  />
-                </div>
-                <div className="mt-4">
-                  <Select
-                    {...register('proficiency_level')}
-                    label="Current Proficiency Level"
-                    error={errors.proficiency_level?.message}
-                    required
-                    options={[
-                      { value: '', label: 'Select your current level' },
-                      ...proficiencyLevels,
-                    ]}
-                    helperText="Be honest about your current level - this helps us personalize your experience"
-                  />
-                </div>
-              </div>
-
-              {/* Learning Goals */}
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Learning Goals (Optional)</h3>
-                <Input
-                  {...register('learning_goals')}
-                  label="What do you want to achieve?"
-                  placeholder="e.g., Travel to Spain, Business communication, Academic purposes..."
-                  error={errors.learning_goals?.message}
-                  helperText="This helps us tailor conversations to your interests"
-                />
-              </div>
-
-              {/* Preferred Topics */}
-              <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Preferred Topics (Optional)</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Select topics you'd like to practice. You can change these later.
-                </p>
-                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {commonTopics.map((topic) => (
-                    <button
-                      key={topic}
-                      type="button"
-                      onClick={() => toggleTopic(topic)}
-                      className={`px-3 py-2 text-sm rounded-md border transition-colors ${
-                        selectedTopics.includes(topic)
-                          ? 'bg-blue-100 border-blue-300 text-blue-700'
-                          : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+        {/* Progress Indicator - Only show after first step */}
+        {currentStep > 1 && (
+          <div className="max-w-4xl mx-auto mb-8">
+            <div className="flex items-center justify-between">
+              {steps.map((step, index) => (
+                <div key={step.number} className="flex items-center">
+                  <div className="flex flex-col items-center">
+                    <div
+                      className={`w-12 h-12 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                        currentStep >= step.number
+                          ? 'bg-blue-600 border-blue-600 text-white'
+                          : 'bg-white border-gray-300 text-gray-400'
                       }`}
                     >
-                      {topic}
-                    </button>
-                  ))}
+                      {currentStep > step.number ? (
+                        <CheckCircle className="w-6 h-6" />
+                      ) : (
+                        <step.icon className="w-6 h-6" />
+                      )}
+                    </div>
+                    <div className="mt-2 text-center">
+                      <p className={`text-sm font-medium ${
+                        currentStep >= step.number ? 'text-blue-600' : 'text-gray-400'
+                      }`}>
+                        {step.title}
+                      </p>
+                      <p className="text-xs text-gray-500 hidden sm:block">
+                        {step.description}
+                      </p>
+                    </div>
+                  </div>
+                  {index < steps.length - 1 && (
+                    <div
+                      className={`flex-1 h-1 mx-4 transition-all duration-300 ${
+                        currentStep > step.number ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}
+                    />
+                  )}
                 </div>
-                {selectedTopics.length > 0 && (
-                  <p className="mt-2 text-sm text-gray-600">
-                    Selected: {selectedTopics.join(', ')}
-                  </p>
-                )}
-              </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-              <div className="pt-6">
-                <Button
-                  type="submit"
-                  loading={isLoading}
+        {/* Main Content */}
+        <div className="max-w-md mx-auto">
+          <div className="bg-white rounded-xl shadow-lg p-8">
+            {currentStep === 1 && (
+              <form onSubmit={handleSubmit(handleNext)} className="space-y-6">
+                <div className="text-center mb-6">
+                  <Lock className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900">Create Your Account</h3>
+                  <p className="text-gray-600">Set up your login credentials</p>
+                </div>
+
+                <Input
+                  {...register('email')}
+                  type="email"
+                  label="Email Address"
+                  error={errors.email?.message}
+                  required
+                  autoComplete="email"
+                />
+
+                <Input
+                  {...register('username')}
+                  label="Username"
+                  error={errors.username?.message}
+                  required
+                  autoComplete="username"
+                  helperText="This will be your unique identifier"
+                />
+
+                <Input
+                  {...register('password')}
+                  type="password"
+                  label="Password"
+                  error={errors.password?.message}
+                  required
+                  autoComplete="new-password"
+                />
+
+                <Input
+                  {...register('confirmPassword')}
+                  type="password"
+                  label="Confirm Password"
+                  error={errors.confirmPassword?.message}
+                  required
+                  autoComplete="new-password"
+                />
+
+                <Button type="submit" className="w-full flex items-center justify-center">
+                  Continue
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+
+                <p className="text-center text-sm text-gray-600">
+                  Already have an account?{' '}
+                  <Link href="/login" className="text-blue-600 hover:text-blue-500">
+                    Sign in
+                  </Link>
+                </p>
+              </form>
+            )}
+
+            {currentStep === 2 && (
+              <form onSubmit={handleSubmit(handleNext)} className="space-y-6">
+                <div className="text-center mb-6">
+                  <User className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900">Personal Information</h3>
+                  <p className="text-gray-600">Tell us a bit about yourself</p>
+                </div>
+
+                <Input
+                  {...register('first_name')}
+                  label="First Name"
+                  error={errors.first_name?.message}
+                  required
+                  autoComplete="given-name"
+                />
+
+                <Input
+                  {...register('last_name')}
+                  label="Last Name"
+                  error={errors.last_name?.message}
+                  required
+                  autoComplete="family-name"
+                />
+
+                <div className="flex space-x-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleBack}
+                    className="flex items-center"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back
+                  </Button>
+                  <Button type="submit" className="flex-1 flex items-center justify-center">
+                    Continue
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {currentStep === 3 && (
+              <form onSubmit={handleSubmit(handleNext)} className="space-y-6">
+                <div className="text-center mb-6">
+                  <Globe className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900">Language Setup</h3>
+                  <p className="text-gray-600">Choose your languages and current level</p>
+                </div>
+
+                <Select
+                  {...register('native_language')}
+                  label="Native Language"
+                  error={errors.native_language?.message}
+                  required
+                  options={[
+                    { value: '', label: 'Select your native language' },
+                    ...languageOptions,
+                  ]}
+                />
+
+                <Select
+                  {...register('target_language')}
+                  label="Target Language"
+                  error={errors.target_language?.message}
+                  required
+                  options={[
+                    { value: '', label: 'Select language to learn' },
+                    ...languageOptions.filter(lang => lang.value !== nativeLanguage),
+                  ]}
+                />
+
+                <Select
+                  {...register('proficiency_level')}
+                  label="Current Proficiency Level"
+                  error={errors.proficiency_level?.message}
+                  required
+                  options={[
+                    { value: '', label: 'Select your current level' },
+                    ...proficiencyLevels,
+                  ]}
+                  helperText="Be honest - this helps us personalize your experience"
+                />
+
+                <div className="flex space-x-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleBack}
+                    className="flex items-center"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back
+                  </Button>
+                  <Button type="submit" className="flex-1 flex items-center justify-center">
+                    Continue
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </form>
+            )}
+
+            {currentStep === 4 && (
+              <div className="space-y-6">
+                <div className="text-center mb-6">
+                  <Target className="w-12 h-12 text-blue-600 mx-auto mb-4" />
+                  <h3 className="text-xl font-semibold text-gray-900">Learning Preferences</h3>
+                  <p className="text-gray-600">Customize your learning experience</p>
+                </div>
+
+                <form onSubmit={handleSubmit(() => {})} className="space-y-6">
+                  <Input
+                    {...register('learning_goals')}
+                    label="Learning Goals (Optional)"
+                    placeholder="e.g., Travel to Spain, Business communication..."
+                    error={errors.learning_goals?.message}
+                    helperText="What do you want to achieve?"
+                  />
+                </form>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Preferred Topics (Optional)
+                  </label>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Select topics you'd like to practice. You can change these later.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+                    {commonTopics.map((topic) => (
+                      <button
+                        key={topic}
+                        type="button"
+                        onClick={() => handleTopicToggle(topic)}
+                        className={`px-3 py-2 text-sm rounded-md border transition-colors ${
+                          onboardingData.selectedTopics.includes(topic)
+                            ? 'bg-blue-100 border-blue-300 text-blue-700'
+                            : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {topic}
+                      </button>
+                    ))}
+                  </div>
+                  {onboardingData.selectedTopics.length > 0 && (
+                    <p className="mt-2 text-sm text-gray-600">
+                      Selected: {onboardingData.selectedTopics.join(', ')}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex space-x-3">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleBack}
+                    className="flex items-center"
+                  >
+                    <ArrowLeft className="w-4 h-4 mr-2" />
+                    Back
+                  </Button>
+                  <Button 
+                    onClick={handleFinalSubmit}
+                    loading={isLoading}
+                    className="flex-1 flex items-center justify-center"
+                  >
+                    Create Account
+                    <CheckCircle className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {currentStep === 5 && (
+              <div className="text-center space-y-6">
+                <Sparkles className="w-16 h-16 text-green-600 mx-auto" />
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">
+                    Welcome to ConvoPilot! 🎉
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    Your account has been created successfully. You're ready to start your language learning journey!
+                  </p>
+                </div>
+
+                <div className="bg-blue-50 rounded-lg p-4 text-left">
+                  <h4 className="font-semibold text-blue-900 mb-2">What's next?</h4>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li>• Complete your first conversation</li>
+                    <li>• Explore different topics</li>
+                    <li>• Track your progress</li>
+                    <li>• Set learning goals</li>
+                  </ul>
+                </div>
+
+                <Button 
+                  onClick={() => router.push('/dashboard')}
                   className="w-full"
                   size="lg"
                 >
-                  Create Account
+                  Go to Dashboard
                 </Button>
               </div>
-            </form>
+            )}
           </div>
         </div>
+
+        {/* Skip option for steps 2-4 */}
+        {currentStep > 1 && currentStep < 5 && (
+          <div className="text-center mt-4">
+            <button
+              onClick={() => setCurrentStep(4)}
+              className="text-sm text-gray-500 hover:text-gray-700"
+            >
+              Skip and complete later
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
