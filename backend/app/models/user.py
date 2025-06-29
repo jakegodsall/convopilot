@@ -16,19 +16,19 @@ class ProficiencyLevel(str, Enum):
 class UserBase(SQLModel):
     email: str = Field(unique=True, index=True, max_length=255)
     username: str = Field(unique=True, index=True, min_length=3, max_length=50)
-    first_name: Optional[str] = Field(default=None, max_length=100)
-    last_name: Optional[str] = Field(default=None, max_length=100)
+    first_name: str | None = Field(default=None, max_length=100)
+    last_name: str | None = Field(default=None, max_length=100)
     native_language: str = Field(min_length=2, max_length=10)  # ISO 639-1 code
     target_language: str = Field(min_length=2, max_length=10)  # ISO 639-1 code
     proficiency_level: ProficiencyLevel
-    preferred_topics: Optional[str] = Field(default=None)  # JSON string
-    learning_goals: Optional[str] = Field(default=None)
+    preferred_topics: str | None = Field(default=None)  # JSON string
+    learning_goals: str | None = Field(default=None)
 
 # Database model
 class User(UserBase, table=True):
     __tablename__ = "users"
     
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: int | None = Field(default=None, primary_key=True)
     hashed_password: str = Field(max_length=255)
     
     # Account status
@@ -36,19 +36,19 @@ class User(UserBase, table=True):
     is_verified: bool = Field(default=False)
     
     # Timestamps
-    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
-    last_login: Optional[datetime] = Field(default=None)
+    created_at: datetime | None = Field(default_factory=datetime.utcnow)
+    updated_at: datetime | None = Field(default_factory=datetime.utcnow)
+    last_login: datetime | None = Field(default=None)
     
     # Relationships
-    sessions: List["ConversationSession"] = Relationship(back_populates="user")
-    feedback_records: List["Feedback"] = Relationship(back_populates="user")
+    sessions: list["ConversationSession"] = Relationship(back_populates="user")
+    feedback_records: list["Feedback"] = Relationship(back_populates="user")
     
-    def set_preferred_topics(self, topics: List[str]):
+    def set_preferred_topics(self, topics: list[str]):
         """Helper method to set preferred topics as JSON string"""
         self.preferred_topics = json.dumps(topics) if topics else None
     
-    def get_preferred_topics(self) -> List[str]:
+    def get_preferred_topics(self) -> list[str]:
         """Helper method to get preferred topics as list"""
         if self.preferred_topics:
             try:
@@ -63,27 +63,27 @@ class UserCreate(UserBase):
     preferred_topics: Optional[List[str]] = None
 
 class UserUpdate(SQLModel):
-    first_name: Optional[str] = Field(default=None, min_length=1, max_length=100)
-    last_name: Optional[str] = Field(default=None, min_length=1, max_length=100)
-    native_language: Optional[str] = Field(default=None, min_length=2, max_length=10)
-    target_language: Optional[str] = Field(default=None, min_length=2, max_length=10)
-    proficiency_level: Optional[ProficiencyLevel] = None
-    preferred_topics: Optional[List[str]] = None
-    learning_goals: Optional[str] = None
+    first_name: str | None = Field(default=None, min_length=1, max_length=100)
+    last_name: str | None = Field(default=None, min_length=1, max_length=100)
+    native_language: str | None = Field(default=None, min_length=2, max_length=10)
+    target_language: str | None = Field(default=None, min_length=2, max_length=10)
+    proficiency_level: ProficiencyLevel | None = None
+    preferred_topics: list[str] | None = None
+    learning_goals: str | None = None
 
 class UserRead(UserBase):
     id: int
     is_active: bool
     is_verified: bool
     created_at: datetime
-    last_login: Optional[datetime] = None
-    preferred_topics: Optional[List[str]] = None
+    last_login: datetime | None = None
+    preferred_topics: list[str] | None = None
 
 class UserReadWithStats(UserRead):
     """Extended user information with statistics"""
-    session_count: Optional[int] = None
-    total_messages: Optional[int] = None
-    average_session_duration: Optional[float] = None
+    session_count: int | None = None
+    total_messages: int | None = None
+    average_session_duration: float | None = None
 
 # Authentication schemas
 class UserLogin(SQLModel):
@@ -95,4 +95,4 @@ class Token(SQLModel):
     token_type: str = "bearer"
 
 class TokenData(SQLModel):
-    email: Optional[str] = None 
+    email: str | None = None 
