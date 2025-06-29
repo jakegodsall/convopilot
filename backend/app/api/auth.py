@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlmodel import Session
 from datetime import timedelta
 
 from ..db.database import get_db
-from ..schemas.user import UserCreate, UserLogin, Token, UserResponse
+from ..models.user import UserCreate, UserLogin, Token, UserRead
 from ..services.user_service import UserService
 from ..core.security import create_access_token
 from ..core.config import settings
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
-@router.post("/register", response_model=UserResponse)
+@router.post("/register", response_model=UserRead)
 async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     """Register a new user"""
     user_service = UserService(db)
@@ -33,13 +33,8 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     try:
         user = user_service.create_user(user_data)
         
-        # Convert preferred_topics JSON string back to list for response
-        if user.preferred_topics:
-            preferred_topics = user_service.parse_preferred_topics(user)
-        else:
-            preferred_topics = None
-        
-        return UserResponse(
+        # Return user data with preferred topics as list
+        return UserRead(
             id=user.id,
             email=user.email,
             username=user.username,
@@ -52,7 +47,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
             is_verified=user.is_verified,
             created_at=user.created_at,
             last_login=user.last_login,
-            preferred_topics=preferred_topics,
+            preferred_topics=user.get_preferred_topics(),
             learning_goals=user.learning_goals
         )
     except Exception as e:

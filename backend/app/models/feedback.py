@@ -1,46 +1,103 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Float, Enum
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
-from ..db.database import Base
-import enum
+from sqlmodel import SQLModel, Field, Relationship
+from typing import Optional, List, Dict, Any
+from datetime import datetime
+from enum import Enum
+import json
 
-class FeedbackType(str, enum.Enum):
+class FeedbackType(str, Enum):
     SESSION_SUMMARY = "session_summary"
     GRAMMAR_CORRECTION = "grammar_correction"
     VOCABULARY_SUGGESTION = "vocabulary_suggestion"
     PRONUNCIATION_TIP = "pronunciation_tip"
     FLUENCY_ASSESSMENT = "fluency_assessment"
 
-class Feedback(Base):
+# Base feedback model
+class FeedbackBase(SQLModel):
+    feedback_type: FeedbackType
+    title: str = Field(max_length=200)
+    content: str
+    original_text: Optional[str] = Field(default=None)
+    corrected_text: Optional[str] = Field(default=None)
+    explanation: Optional[str] = Field(default=None)
+
+# Database model
+class Feedback(FeedbackBase, table=True):
     __tablename__ = "feedback"
     
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    session_id = Column(Integer, ForeignKey("conversation_sessions.id"), nullable=True)
-    
-    # Feedback details
-    feedback_type = Column(Enum(FeedbackType), nullable=False)
-    title = Column(String(200), nullable=False)
-    content = Column(Text, nullable=False)
-    
-    # Specific analysis
-    original_text = Column(Text, nullable=True)         # Original user text (if applicable)
-    corrected_text = Column(Text, nullable=True)        # Corrected version
-    explanation = Column(Text, nullable=True)           # Explanation of the correction/tip
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id")
+    session_id: Optional[int] = Field(foreign_key="conversation_sessions.id", default=None)
     
     # Ratings and scores
-    grammar_score = Column(Float, nullable=True)        # 0-100 grammar accuracy
-    vocabulary_score = Column(Float, nullable=True)     # 0-100 vocabulary usage
-    fluency_score = Column(Float, nullable=True)        # 0-100 fluency rating
-    overall_score = Column(Float, nullable=True)        # 0-100 overall performance
+    grammar_score: Optional[float] = Field(default=None, ge=0, le=100)
+    vocabulary_score: Optional[float] = Field(default=None, ge=0, le=100)
+    fluency_score: Optional[float] = Field(default=None, ge=0, le=100)
+    overall_score: Optional[float] = Field(default=None, ge=0, le=100)
     
     # Learning recommendations
-    recommended_practice = Column(Text, nullable=True)   # JSON array of practice suggestions
-    difficulty_adjustment = Column(String(20), nullable=True)  # "increase", "decrease", "maintain"
+    recommended_practice: Optional[str] = Field(default=None)  # JSON array
+    difficulty_adjustment: Optional[str] = Field(default=None, max_length=20)  # "increase", "decrease", "maintain"
     
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
     
     # Relationships
-    user = relationship("User", back_populates="feedback_records")
-    session = relationship("ConversationSession", back_populates="feedback_records") 
+    user: Optional["User"] = Relationship(back_populates="feedback_records")
+    session: Optional["ConversationSession"] = Relationship(back_populates="feedback_records")
+    
+    def set_recommended_practice(self, practices: List[str]):
+        """Helper method to set recommended practice as JSON string"""
+        self.recommended_practice = json.dumps(practices) if practices else None
+    
+    def get_recommended_practice(self) -> List[str]:
+        """Helper method to get recommended practice as list"""
+        if self.recommended_practice:
+            try:
+                return json.loads(self.recommended_practice)
+            except json.JSONDecodeError:
+                return []
+        return []
+
+# API Models
+class FeedbackCreate(FeedbackBase):
+    user_id: int
+    session_id: Optional[int] = None
+    grammar_score: Optional[float] = Field(default=None, ge=0, le=100)
+    vocabulary_score: Optional[float] = Field(default=None, ge=0, le=100)
+    fluency_score: Optional[float] = Field(default=None, ge=0, le=100)
+    overall_score: Optional[float] = Field(default=None, ge=0, le=100)
+    recommended_practice: Optional[List[str]] = None
+    difficulty_adjustment: Optional[str] = None
+
+class FeedbackUpdate(SQLModel):
+    title: Optional[str] = Field(default=None, max_length=200)
+    content: Optional[str] = None
+    corrected_text: Optional[str] = None
+    explanation: Optional[str] = None
+    grammar_score: Optional[float] = Field(default=None, ge=0, le=100)
+    vocabulary_score: Optional[float] = Field(default=None, ge=0, le=100)
+    fluency_score: Optional[float] = Field(default=None, ge=0, le=100)
+    overall_score: Optional[float] = Field(default=None, ge=0, le=100)
+    recommended_practice: Optional[List[str]] = None
+    difficulty_adjustment: Optional[str] = None
+
+class FeedbackRead(FeedbackBase):
+    id: int
+    user_id: int
+    session_id: Optional[int] = None
+    grammar_score: Optional[float] = None
+    vocabulary_score: Optional[float] = None
+    fluency_score: Optional[float] = None
+    overall_score: Optional[float] = None
+    recommended_practice: Optional[List[str]] = None
+    difficulty_adjustment: Optional[str] = None
+    created_at: datetime
+
+class FeedbackSummary(SQLModel):
+    """Summary model for dashboard/analytics"""
+    feedback_type: FeedbackType
+    count: int
+    average_grammar_score: Optional[float] = None
+    average_vocabulary_score: Optional[float] = None
+    average_fluency_score: Optional[float] = None
+    average_overall_score: Optional[float] = None 

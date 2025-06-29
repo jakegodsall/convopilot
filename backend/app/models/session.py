@@ -1,51 +1,104 @@
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Enum, Float
-from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
-from ..db.database import Base
-import enum
+from sqlmodel import SQLModel, Field, Relationship
+from typing import Optional, List, Dict, Any
+from datetime import datetime
+from enum import Enum
+import json
 
-class SessionStatus(str, enum.Enum):
+class SessionStatus(str, Enum):
     ACTIVE = "active"
     COMPLETED = "completed"
     PAUSED = "paused"
     CANCELLED = "cancelled"
 
-class DifficultyLevel(str, enum.Enum):
+class DifficultyLevel(str, Enum):
     EASY = "easy"
     MEDIUM = "medium"
     HARD = "hard"
 
-class ConversationSession(Base):
+# Base session model
+class ConversationSessionBase(SQLModel):
+    title: str = Field(max_length=200)
+    topic: str = Field(max_length=100)  # e.g., "travel", "business", "casual"
+    difficulty_level: DifficultyLevel
+    target_language: str = Field(max_length=10)  # ISO 639-1 code
+    conversation_context: Optional[str] = Field(default=None)  # Initial context/scenario
+
+# Database model
+class ConversationSession(ConversationSessionBase, table=True):
     __tablename__ = "conversation_sessions"
     
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    
-    # Session details
-    title = Column(String(200), nullable=False)
-    topic = Column(String(100), nullable=False)  # e.g., "travel", "business", "casual"
-    difficulty_level = Column(Enum(DifficultyLevel), nullable=False)
-    target_language = Column(String(10), nullable=False)  # ISO 639-1 code
+    id: Optional[int] = Field(default=None, primary_key=True)
+    user_id: int = Field(foreign_key="users.id")
     
     # Session content
-    conversation_context = Column(Text, nullable=True)  # Initial context/scenario
-    full_conversation = Column(Text, nullable=True)     # JSON string of the full conversation
+    full_conversation: Optional[str] = Field(default=None)  # JSON string of full conversation
     
     # Session metrics
-    duration_minutes = Column(Float, nullable=True)     # Session duration
-    message_count = Column(Integer, default=0)          # Number of messages exchanged
-    user_message_count = Column(Integer, default=0)     # User messages only
+    duration_minutes: Optional[float] = Field(default=None)
+    message_count: int = Field(default=0)
+    user_message_count: int = Field(default=0)
     
     # Session status
-    status = Column(Enum(SessionStatus), default=SessionStatus.ACTIVE)
+    status: SessionStatus = Field(default=SessionStatus.ACTIVE)
     
     # Timestamps
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    started_at = Column(DateTime(timezone=True), nullable=True)
-    ended_at = Column(DateTime(timezone=True), nullable=True)
+    created_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    updated_at: Optional[datetime] = Field(default_factory=datetime.utcnow)
+    started_at: Optional[datetime] = Field(default=None)
+    ended_at: Optional[datetime] = Field(default=None)
     
     # Relationships
-    user = relationship("User", back_populates="sessions")
-    messages = relationship("Message", back_populates="session")
-    feedback_records = relationship("Feedback", back_populates="session") 
+    user: Optional["User"] = Relationship(back_populates="sessions")
+    messages: List["Message"] = Relationship(back_populates="session")
+    feedback_records: List["Feedback"] = Relationship(back_populates="session")
+    
+    def set_conversation(self, conversation: List[Dict[str, Any]]):
+        """Helper method to set full conversation as JSON string"""
+        self.full_conversation = json.dumps(conversation) if conversation else None
+    
+    def get_conversation(self) -> List[Dict[str, Any]]:
+        """Helper method to get conversation as list of dicts"""
+        if self.full_conversation:
+            try:
+                return json.loads(self.full_conversation)
+            except json.JSONDecodeError:
+                return []
+        return []
+
+# API Models
+class ConversationSessionCreate(ConversationSessionBase):
+    pass
+
+class ConversationSessionUpdate(SQLModel):
+    title: Optional[str] = Field(default=None, max_length=200)
+    topic: Optional[str] = Field(default=None, max_length=100)
+    difficulty_level: Optional[DifficultyLevel] = None
+    conversation_context: Optional[str] = None
+    status: Optional[SessionStatus] = None
+    ended_at: Optional[datetime] = None
+
+class ConversationSessionRead(ConversationSessionBase):
+    id: int
+    user_id: int
+    status: SessionStatus
+    duration_minutes: Optional[float] = None
+    message_count: int
+    user_message_count: int
+    created_at: datetime
+    updated_at: datetime
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+
+class ConversationSessionReadWithMessages(ConversationSessionRead):
+    messages: List["MessageRead"] = []
+    conversation: Optional[List[Dict[str, Any]]] = None
+
+class ConversationSessionSummary(SQLModel):
+    id: int
+    title: str
+    topic: str
+    difficulty_level: DifficultyLevel
+    status: SessionStatus
+    duration_minutes: Optional[float] = None
+    message_count: int
+    created_at: datetime 

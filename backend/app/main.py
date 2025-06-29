@@ -5,13 +5,13 @@ from contextlib import asynccontextmanager
 
 from .core.config import settings
 from .api import auth, users
-from .db.database import engine, Base
+from .db.database import engine, create_db_and_tables
 
 # Create database tables
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create tables on startup
-    Base.metadata.create_all(bind=engine)
+    # Create tables on startup using SQLModel
+    create_db_and_tables()
     yield
     # Cleanup on shutdown (if needed)
 

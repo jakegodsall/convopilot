@@ -8,11 +8,11 @@ class Settings(BaseSettings):
     debug: bool = False
     version: str = "1.0.0"
     
-    # Database settings
+    # Database settings - Default to Docker MySQL settings
     database_url: Optional[str] = None
-    mysql_user: str = "root"
-    mysql_password: str = "password"
-    mysql_host: str = "localhost"
+    mysql_user: str = "convopilot_user"
+    mysql_password: str = "convopilot_pass"
+    mysql_host: str = "localhost"  # Use localhost when connecting from host, mysql when from container
     mysql_port: int = 3306
     mysql_database: str = "convopilot"
     
@@ -40,11 +40,12 @@ class Settings(BaseSettings):
     @property
     def database_url_async(self) -> str:
         if self.database_url:
-            # Handle SQLite URLs
-            if self.database_url.startswith("sqlite"):
-                return self.database_url.replace("sqlite://", "sqlite+aiosqlite://")
             # Handle MySQL URLs
-            return self.database_url.replace("mysql://", "mysql+aiomysql://")
+            if self.database_url.startswith("mysql://"):
+                return self.database_url.replace("mysql://", "mysql+aiomysql://")
+            elif self.database_url.startswith("mysql+pymysql://"):
+                return self.database_url.replace("mysql+pymysql://", "mysql+aiomysql://")
+            return self.database_url
         return f"mysql+aiomysql://{self.mysql_user}:{self.mysql_password}@{self.mysql_host}:{self.mysql_port}/{self.mysql_database}"
 
 settings = Settings() 
