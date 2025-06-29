@@ -25,16 +25,6 @@ class Settings(BaseSettings):
     # CORS settings - Use string for env var, convert to list
     backend_cors_origins: Union[str, list[str]] = "http://dev.jakegodsall.com:3000,http://dev.jakegodsall.com:8000"
     
-    @model_validator(mode='before')
-    @classmethod
-    def validate_cors_origins(cls, data: Any) -> Any:
-        if isinstance(data, dict) and 'backend_cors_origins' in data:
-            cors_origins = data['backend_cors_origins']
-            if isinstance(cors_origins, str):
-                # Split comma-separated string into list
-                data['backend_cors_origins'] = [origin.strip() for origin in cors_origins.split(',') if origin.strip()]
-        return data
-    
     # LLM API settings (for future use)
     openai_api_key: Optional[str] = None
     
