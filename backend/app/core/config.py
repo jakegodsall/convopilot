@@ -1,6 +1,4 @@
 from pydantic_settings import BaseSettings
-from pydantic import model_validator
-from typing import Optional, Union, Any
 import os
 
 class Settings(BaseSettings):
@@ -10,7 +8,7 @@ class Settings(BaseSettings):
     version: str = "1.0.0"
     
     # Database settings - Default to Docker MySQL settings
-    database_url: Optional[str] = None
+    database_url: str | None = None
     mysql_user: str = "convopilot_user"
     mysql_password: str = "convopilot_pass"
     mysql_host: str = "localhost"  # Use localhost when connecting from host, mysql when from container
@@ -23,10 +21,10 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     
     # CORS settings - Use string for env var, convert to list
-    backend_cors_origins: Union[str, list[str]] = "http://dev.jakegodsall.com:3000"
+    backend_cors_origins: str | list[str] = "http://dev.jakegodsall.com:3000"
     
     # LLM API settings (for future use)
-    openai_api_key: Optional[str] = None
+    openai_api_key: str | None = None
     
     class Config:
         env_file = ".env"
