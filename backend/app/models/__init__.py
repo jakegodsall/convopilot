@@ -26,6 +26,9 @@ from .feedback import (
     FeedbackBase, FeedbackCreate, FeedbackUpdate, FeedbackRead, FeedbackSummary
 )
 
+# Language Models
+from .language import Language, LanguageBase, LanguageCreate, LanguageRead, UserLanguage, UserLanguageRead
+
 __all__ = [
     # Database Models
     "User", "ConversationSession", "Message", "Feedback",
@@ -46,4 +49,7 @@ __all__ = [
     
     # Feedback API Models
     "FeedbackBase", "FeedbackCreate", "FeedbackUpdate", "FeedbackRead", "FeedbackSummary",
+    
+    # Language Models
+    "Language", "LanguageBase", "LanguageCreate", "LanguageRead", "UserLanguage", "UserLanguageRead"
 ] 

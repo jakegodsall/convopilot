@@ -1,8 +1,11 @@
 from sqlmodel import SQLModel, Field, Relationship
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, TYPE_CHECKING
 from datetime import datetime
 from enum import Enum
 import json
+
+if TYPE_CHECKING:
+    from .language import Language
 
 class SessionStatus(str, Enum):
     ACTIVE = "active"
@@ -20,7 +23,7 @@ class ConversationSessionBase(SQLModel):
     title: str = Field(max_length=200)
     topic: str = Field(max_length=100)  # e.g., "travel", "business", "casual"
     difficulty_level: DifficultyLevel
-    target_language: str = Field(max_length=10)  # ISO 639-1 code
+    target_language_id: int = Field(foreign_key="languages.id")
     conversation_context: Optional[str] = Field(default=None)  # Initial context/scenario
 
 # Database model
@@ -51,6 +54,7 @@ class ConversationSession(ConversationSessionBase, table=True):
     user: Optional["User"] = Relationship(back_populates="sessions")
     messages: List["Message"] = Relationship(back_populates="session")
     feedback_records: List["Feedback"] = Relationship(back_populates="session")
+    target_language: Optional["Language"] = Relationship()
     
     def set_conversation(self, conversation: List[Dict[str, Any]]):
         """Helper method to set full conversation as JSON string"""
@@ -67,7 +71,8 @@ class ConversationSession(ConversationSessionBase, table=True):
 
 # API Models
 class ConversationSessionCreate(ConversationSessionBase):
-    pass
+    # For backward compatibility, accept target language code
+    target_language_code: Optional[str] = Field(default=None, max_length=10)
 
 class ConversationSessionUpdate(SQLModel):
     title: Optional[str] = Field(default=None, max_length=200)

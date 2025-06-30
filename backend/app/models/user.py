@@ -1,7 +1,11 @@
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import datetime
 from enum import Enum
+from typing import List, Optional, TYPE_CHECKING
 import json
+
+if TYPE_CHECKING:
+    from .language import Language, LanguageRead, UserLanguage, UserLanguageRead
 
 class ProficiencyLevel(str, Enum):
     BEGINNER = "beginner"
@@ -17,9 +21,7 @@ class UserBase(SQLModel):
     username: str = Field(unique=True, index=True, min_length=3, max_length=50)
     first_name: str | None = Field(default=None, max_length=100)
     last_name: str | None = Field(default=None, max_length=100)
-    native_language: str = Field(min_length=2, max_length=10)  # ISO 639-1 code
-    target_language: str = Field(min_length=2, max_length=10)  # ISO 639-1 code
-    proficiency_level: ProficiencyLevel
+    native_language_id: int = Field(foreign_key="languages.id")
     preferred_topics: str | None = Field(default=None)  # JSON string
     learning_goals: str | None = Field(default=None)
 
@@ -40,8 +42,10 @@ class User(UserBase, table=True):
     last_login: datetime | None = Field(default=None)
     
     # Relationships
-    sessions: list["ConversationSession"] = Relationship(back_populates="user")
-    feedback_records: list["Feedback"] = Relationship(back_populates="user")
+    sessions: List["ConversationSession"] = Relationship(back_populates="user")
+    feedback_records: List["Feedback"] = Relationship(back_populates="user")
+    native_language: Optional["Language"] = Relationship()
+    user_languages: List["UserLanguage"] = Relationship(back_populates="user")
     
     def set_preferred_topics(self, topics: list[str]):
         """Helper method to set preferred topics as JSON string"""
@@ -59,24 +63,33 @@ class User(UserBase, table=True):
 # API Models
 class UserCreate(UserBase):
     password: str = Field(min_length=8)
-    preferred_topics: list[str] | None = None
+    preferred_topics: List[str] | None = None
+    # For backward compatibility, accept target language and proficiency
+    target_language_code: str = Field(min_length=2, max_length=10)
+    proficiency_level: ProficiencyLevel
 
 class UserUpdate(SQLModel):
     first_name: str | None = Field(default=None, min_length=1, max_length=100)
     last_name: str | None = Field(default=None, min_length=1, max_length=100)
-    native_language: str | None = Field(default=None, min_length=2, max_length=10)
-    target_language: str | None = Field(default=None, min_length=2, max_length=10)
-    proficiency_level: ProficiencyLevel | None = None
-    preferred_topics: list[str] | None = None
+    native_language_id: int | None = None
+    preferred_topics: List[str] | None = None
     learning_goals: str | None = None
 
-class UserRead(UserBase):
+class UserRead(SQLModel):
     id: int
+    email: str
+    username: str
+    first_name: str | None = None
+    last_name: str | None = None
+    native_language: Optional["LanguageRead"] = None
+    current_language: Optional["UserLanguageRead"] = None
+    learning_languages: List["UserLanguageRead"] = []
     is_active: bool
     is_verified: bool
     created_at: datetime
     last_login: datetime | None = None
-    preferred_topics: list[str] | None = None
+    preferred_topics: List[str] | None = None
+    learning_goals: str | None = None
 
 class UserReadWithStats(UserRead):
     """Extended user information with statistics"""
