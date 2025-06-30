@@ -16,7 +16,8 @@ import {
   commonTopics, 
   languageNames, 
   getLanguageName,
-  formatProficiencyLevel 
+  formatProficiencyLevel,
+  getErrorMessage
 } from '@/lib/utils';
 import { User, Save, AlertTriangle } from 'lucide-react';
 
@@ -80,7 +81,7 @@ export default function ProfilePage() {
       await refreshUser();
       toast.success('Profile updated successfully!');
     } catch (error: any) {
-      const message = error.response?.data?.detail || 'Failed to update profile';
+      const message = getErrorMessage(error) || 'Failed to update profile';
       toast.error(message);
     } finally {
       setIsLoading(false);
@@ -101,7 +102,7 @@ export default function ProfilePage() {
       toast.success('Account deactivated successfully');
       // The auth context will handle logout
     } catch (error: any) {
-      const message = error.response?.data?.detail || 'Failed to deactivate account';
+      const message = getErrorMessage(error) || 'Failed to deactivate account';
       toast.error(message);
     }
   };

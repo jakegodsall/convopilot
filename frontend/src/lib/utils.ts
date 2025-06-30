@@ -113,4 +113,44 @@ export const commonTopics = [
   'Hobbies',
   'Current Events',
   'Shopping',
-]; 
+];
+
+// Error handling utility
+export function getErrorMessage(error: any): string {
+  // Check if it's an axios error with response data
+  if (error?.response?.data) {
+    const { detail } = error.response.data;
+    
+    // If detail is a string, return it directly
+    if (typeof detail === 'string') {
+      return detail;
+    }
+    
+    // If detail is an array of validation errors
+    if (Array.isArray(detail)) {
+      return detail.map((err: any) => {
+        if (typeof err === 'string') return err;
+        if (err.msg) return err.msg;
+        return 'Validation error';
+      }).join(', ');
+    }
+    
+    // If detail is an object with validation error
+    if (detail && typeof detail === 'object' && detail.msg) {
+      return detail.msg;
+    }
+    
+    // Fallback to any message field
+    if (error.response.data.message) {
+      return error.response.data.message;
+    }
+  }
+  
+  // Fallback to error message
+  if (error?.message) {
+    return error.message;
+  }
+  
+  // Default fallback
+  return 'An unexpected error occurred';
+} 

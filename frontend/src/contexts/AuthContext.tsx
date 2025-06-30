@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import Cookies from 'js-cookie';
 import toast from 'react-hot-toast';
 import { authAPI, userAPI, User, LoginData, RegisterData } from '@/lib/api';
+import { getErrorMessage } from '@/lib/utils';
 
 interface AuthContextType {
   user: User | null;
@@ -61,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       toast.success('Successfully logged in!');
     } catch (error: any) {
-      const message = error.response?.data?.detail || 'Login failed';
+      const message = getErrorMessage(error) || 'Login failed';
       toast.error(message);
       throw error;
     }
@@ -79,7 +80,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       toast.success('Account created successfully!');
     } catch (error: any) {
-      const message = error.response?.data?.detail || 'Registration failed';
+      const message = getErrorMessage(error) || 'Registration failed';
       toast.error(message);
       throw error;
     }
