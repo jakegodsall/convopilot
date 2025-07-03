@@ -96,7 +96,7 @@ export interface RegisterData {
   native_language: string;
   target_language: string;
   proficiency_level: string;
-  preferred_topics?: string[];
+  preferred_topics?: string;
   learning_goals?: string;
 }
 

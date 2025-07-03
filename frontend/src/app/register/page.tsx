@@ -12,6 +12,7 @@ import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import { proficiencyLevels, commonTopics, languageNames } from '@/lib/utils';
 import { ArrowRight, ArrowLeft, CheckCircle, Lock, Globe, Target, Sparkles } from 'lucide-react';
+import { RegisterData } from '@/lib/api';
 
 // Step schemas for validation
 const step1Schema = z.object({
@@ -159,14 +160,33 @@ export default function RegisterPage() {
   const handleFinalSubmit = async () => {
     setIsLoading(true);
     try {
-      const { confirmPassword, ...registerData } = {
-        ...onboardingData.step1,
-        ...onboardingData.step2,
-        ...onboardingData.step3,
-        preferred_topics: onboardingData.selectedTopics.length > 0 ? onboardingData.selectedTopics : undefined,
+      const {
+        email,
+        username,
+        password,
+        native_language,
+        target_language,
+        proficiency_level,
+      } = onboardingData.step1 as any;
+
+      
+
+      const registerData: RegisterData = {
+        email: onboardingData.step1.email!,
+        username: onboardingData.step1.username!,
+        password: onboardingData.step1.password!,
+        native_language: onboardingData.step2.native_language!,
+        target_language: onboardingData.step2.target_language!,
+        proficiency_level: onboardingData.step2.proficiency_level!,
+        learning_goals: onboardingData.step3.learning_goals || undefined,
+        preferred_topics: onboardingData.selectedTopics.length > 0
+          ? JSON.stringify(onboardingData.selectedTopics)
+          : undefined,
       };
 
-      await registerUser(registerData as any);
+      console.log(registerData)
+      
+      await registerUser(registerData);
       setCurrentStep(4);
     } catch (error) {
       // Error is handled by the auth context
