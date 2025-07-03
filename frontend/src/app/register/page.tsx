@@ -159,18 +159,8 @@ export default function RegisterPage() {
 
   const handleFinalSubmit = async () => {
     setIsLoading(true);
+
     try {
-      const {
-        email,
-        username,
-        password,
-        native_language,
-        target_language,
-        proficiency_level,
-      } = onboardingData.step1 as any;
-
-      
-
       const registerData: RegisterData = {
         email: onboardingData.step1.email!,
         username: onboardingData.step1.username!,

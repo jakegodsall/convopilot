@@ -1,9 +1,11 @@
+from fastapi import HTTPException
 from sqlmodel import Session, select
 from typing import Optional, List
 from datetime import datetime
 import json
 
 from ..models.user import User, UserCreate, UserUpdate
+from ..models.language import Language, UserLanguage
 from ..core.security import get_password_hash, verify_password
 
 class UserService:
@@ -14,6 +16,24 @@ class UserService:
         """Create a new user"""
         # Hash the password
         hashed_password = get_password_hash(user_data.password)
+
+        # Look up languages by code
+        native_lang = self.db.exec(
+            select(Language).where(Language.code == user_data.native_language)
+        ).first()
+        target_lang = self.db.exec(
+            select(Language).where(Language.code == user_data.target_language)
+        ).first()
+        
+        if not native_lang:
+            raise HTTPException(status_code=400, detail=f"Invalid native language code: {user_data.native_language}")
+        if not target_lang:
+            raise HTTPException(status_code=400, detail=f"Invalid target language code: {user_data.target_language}")
+        
+        # Handle preferred topics
+        preferred_topics_json = None
+        if user_data.preferred_topics:
+            preferred_topics_json = user_data.preferred_topics
         
         # Create user instance
         db_user = User(
@@ -22,21 +42,33 @@ class UserService:
             hashed_password=hashed_password,
             first_name=user_data.first_name,
             last_name=user_data.last_name,
-            native_language=user_data.native_language,
-            target_language=user_data.target_language,
-            proficiency_level=user_data.proficiency_level,
+            native_language_id=native_lang.id,
+            preferred_topics=preferred_topics_json,
             learning_goals=user_data.learning_goals,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow()
         )
         
-        # Set preferred topics using helper method
-        if user_data.preferred_topics:
-            db_user.set_preferred_topics(user_data.preferred_topics)
-        
         self.db.add(db_user)
         self.db.commit()
         self.db.refresh(db_user)
+        
+        # Create user-language relationship for the target language
+        user_language = UserLanguage(
+            user_id=db_user.id,
+            language_id=target_lang.id,
+            proficiency_level=user_data.proficiency_level,
+            is_current=True,
+            started_learning_at=datetime.utcnow()
+        )
+        
+        self.db.add(user_language)
+        self.db.commit()
+        self.db.refresh(user_language)
+        
+        # Refresh user to load relationships
+        self.db.refresh(db_user)
+        
         return db_user
     
     def get_user_by_email(self, email: str) -> Optional[User]:

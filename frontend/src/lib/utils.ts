@@ -115,6 +115,19 @@ export const commonTopics = [
   'Shopping',
 ];
 
+// Helper functions for user language data
+export function getUserNativeLanguageCode(user: any): string {
+  return user?.native_language?.code || '';
+}
+
+export function getUserTargetLanguageCode(user: any): string {
+  return user?.current_language?.language?.code || '';
+}
+
+export function getUserProficiencyLevel(user: any): string {
+  return user?.current_language?.proficiency_level || '';
+}
+
 // Error handling utility
 export function getErrorMessage(error: any): string {
   // Check if it's an axios error with response data

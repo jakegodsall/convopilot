@@ -38,16 +38,63 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     try:
         user = user_service.create_user(user_data)
         
-        # Return user data with preferred topics as list
+        # Get the current target language relationship
+        current_language = None
+        learning_languages = []
+        if user.user_languages:
+            for user_lang in user.user_languages:
+                if user_lang.is_current:
+                    current_language = {
+                        "id": user_lang.id,
+                        "user_id": user_lang.user_id,
+                        "language": {
+                            "id": user_lang.language.id,
+                            "code": user_lang.language.code,
+                            "name": user_lang.language.name,
+                            "native_name": user_lang.language.native_name,
+                            "is_active": user_lang.language.is_active,
+                            "created_at": user_lang.language.created_at
+                        },
+                        "proficiency_level": user_lang.proficiency_level,
+                        "is_current": user_lang.is_current,
+                        "started_learning_at": user_lang.started_learning_at,
+                        "last_practiced_at": user_lang.last_practiced_at
+                    }
+                
+                learning_languages.append({
+                    "id": user_lang.id,
+                    "user_id": user_lang.user_id,
+                    "language": {
+                        "id": user_lang.language.id,
+                        "code": user_lang.language.code,
+                        "name": user_lang.language.name,
+                        "native_name": user_lang.language.native_name,
+                        "is_active": user_lang.language.is_active,
+                        "created_at": user_lang.language.created_at
+                    },
+                    "proficiency_level": user_lang.proficiency_level,
+                    "is_current": user_lang.is_current,
+                    "started_learning_at": user_lang.started_learning_at,
+                    "last_practiced_at": user_lang.last_practiced_at
+                })
+        
+        # Return user data
         return UserRead(
             id=user.id,
             email=user.email,
             username=user.username,
-            first_name="Test First Name",
-            last_name="Test Last Name",
-            native_language=user.native_language,
-            target_language=user.target_language,
-            proficiency_level=user.proficiency_level,
+            first_name=user.first_name,
+            last_name=user.last_name,
+            native_language={
+                "id": user.native_language.id,
+                "code": user.native_language.code,
+                "name": user.native_language.name,
+                "native_name": user.native_language.native_name,
+                "is_active": user.native_language.is_active,
+                "created_at": user.native_language.created_at
+            } if user.native_language else None,
+            current_language=current_language,
+            learning_languages=learning_languages,
             is_active=user.is_active,
             is_verified=user.is_verified,
             created_at=user.created_at,

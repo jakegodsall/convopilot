@@ -47,10 +47,6 @@ class User(UserBase, table=True):
     native_language: Optional["Language"] = Relationship()
     user_languages: List["UserLanguage"] = Relationship(back_populates="user")
     
-    def set_preferred_topics(self, topics: list[str]):
-        """Helper method to set preferred topics as JSON string"""
-        self.preferred_topics = json.dumps(topics) if topics else None
-    
     def get_preferred_topics(self) -> list[str]:
         """Helper method to get preferred topics as list"""
         if self.preferred_topics:
@@ -61,12 +57,24 @@ class User(UserBase, table=True):
         return []
 
 # API Models
-class UserCreate(UserBase):
+class UserCreate(SQLModel):
+    # Account details
+    email: str = Field(unique=True, index=True, max_length=255)
+    username: str = Field(unique=True, index=True, min_length=3, max_length=50)
     password: str = Field(min_length=8)
-    preferred_topics: List[str] | None = None
-    # For backward compatibility, accept target language and proficiency
-    target_language_code: str = Field(min_length=2, max_length=10)
+    
+    # Personal details (optional for now)
+    first_name: str | None = Field(default=None, max_length=100)
+    last_name: str | None = Field(default=None, max_length=100)
+    
+    # Language details (using codes, will be converted to IDs)
+    native_language: str = Field(min_length=2, max_length=10, description="Language code like 'en', 'es'")
+    target_language: str = Field(min_length=2, max_length=10, description="Language code like 'en', 'es'")
     proficiency_level: ProficiencyLevel
+    
+    # Optional fields
+    preferred_topics: str | None = Field(default=None, description="JSON string of preferred topics")
+    learning_goals: str | None = Field(default=None)
 
 class UserUpdate(SQLModel):
     first_name: str | None = Field(default=None, min_length=1, max_length=100)

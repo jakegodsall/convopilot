@@ -110,15 +110,34 @@ export interface UserUpdateData {
   learning_goals?: string;
 }
 
+export interface Language {
+  id: number;
+  code: string;
+  name: string;
+  native_name: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface UserLanguage {
+  id: number;
+  user_id: number;
+  language: Language;
+  proficiency_level: string;
+  is_current: boolean;
+  started_learning_at: string;
+  last_practiced_at?: string;
+}
+
 export interface User {
   id: number;
   email: string;
   username: string;
   first_name?: string;
   last_name?: string;
-  native_language: string;
-  target_language: string;
-  proficiency_level: string;
+  native_language?: Language;
+  current_language?: UserLanguage;
+  learning_languages: UserLanguage[];
   is_active: boolean;
   is_verified: boolean;
   created_at: string;

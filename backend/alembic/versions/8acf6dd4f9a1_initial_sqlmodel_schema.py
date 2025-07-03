@@ -56,7 +56,7 @@ def upgrade() -> None:
     op.create_index('ix_users_email', 'users', ['email'])
     op.create_index('ix_users_username', 'users', ['username'])
     
-    # Create user_languages junction table (depends on users and languages)
+    # Create user_languages junction table (depends on users and ladnguages)
     op.create_table('user_languages',
         sa.Column('id', sa.Integer(), nullable=False),
         sa.Column('user_id', sa.Integer(), nullable=False),
